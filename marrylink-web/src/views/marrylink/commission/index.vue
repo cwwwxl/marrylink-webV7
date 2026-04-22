@@ -52,6 +52,42 @@
       </el-col>
     </el-row>
 
+    <!-- 佣金账单统计 -->
+    <el-row :gutter="16" style="margin-bottom: 20px;">
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">待收佣金</div>
+            <div class="stat-value pending">¥{{ billStats.pendingAmount || '0.00' }}</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">已收佣金</div>
+            <div class="stat-value success">¥{{ billStats.paidAmount || '0.00' }}</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">逾期未付</div>
+            <div class="stat-value" style="color: #f56c6c;">¥{{ billStats.overdueAmount || '0.00' }}</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">逾期笔数</div>
+            <div class="stat-value" style="color: #f56c6c;">{{ billStats.overdueCount || 0 }}</div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- Tab 页签 -->
     <el-tabs v-model="activeTab" type="border-card">
       <!-- 主持人下发 -->
@@ -270,6 +306,73 @@
           @pagination="fetchWithdrawals"
         />
       </el-tab-pane>
+
+      <!-- 佣金账单 -->
+      <el-tab-pane label="佣金账单" name="bill">
+        <div class="search-container" style="display: flex; justify-content: space-between; align-items: center;">
+          <el-form :model="billQuery" :inline="true">
+            <el-form-item label="订单号">
+              <el-input v-model="billQuery.orderNo" placeholder="订单号" clearable @keyup.enter="handleBillQuery" />
+            </el-form-item>
+            <el-form-item label="主持人">
+              <el-input v-model="billQuery.hostName" placeholder="主持人姓名" clearable @keyup.enter="handleBillQuery" />
+            </el-form-item>
+            <el-form-item label="状态" style="width: 150px;">
+              <el-select v-model="billQuery.status" placeholder="全部" clearable>
+                <el-option label="待支付" :value="1" />
+                <el-option label="已支付" :value="2" />
+                <el-option label="已逾期" :value="3" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="search" @click="handleBillQuery">搜索</el-button>
+              <el-button icon="refresh" @click="handleResetBillQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
+          <el-button type="warning" @click="handleMarkOverdue">标记逾期账单</el-button>
+        </div>
+
+        <el-table v-loading="billLoading" :data="billData" border stripe>
+          <el-table-column label="账单编号" prop="billNo" width="160" show-overflow-tooltip />
+          <el-table-column label="订单号" prop="orderNo" width="150" />
+          <el-table-column label="主持人" prop="hostName" width="120" />
+          <el-table-column label="订单金额" width="110">
+            <template #default="scope">¥{{ scope.row.orderAmount }}</template>
+          </el-table-column>
+          <el-table-column label="佣金比例" width="90">
+            <template #default="scope">{{ scope.row.commissionRate }}%</template>
+          </el-table-column>
+          <el-table-column label="应付佣金" width="110">
+            <template #default="scope">
+              <span style="color: #e6a23c; font-weight: bold;">¥{{ scope.row.commissionAmount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="getBillStatusType(scope.row.status)">
+                {{ getBillStatusText(scope.row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="支付期限" prop="dueDate" width="170" />
+          <el-table-column label="支付时间" prop="paidTime" width="170" />
+          <el-table-column label="创建时间" prop="createTime" width="170" />
+          <el-table-column label="操作" fixed="right" width="120">
+            <template #default="scope">
+              <el-button v-if="scope.row.status === 1 || scope.row.status === 3" type="primary" link size="small" @click="handleAdminPayBill(scope.row)">代付</el-button>
+              <span v-else style="color: #909399;">已完成</span>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <pagination
+          v-if="billTotal > 0"
+          v-model:total="billTotal"
+          v-model:page="billQuery.current"
+          v-model:limit="billQuery.size"
+          @pagination="fetchBills"
+        />
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 下发弹窗 -->
@@ -352,21 +455,28 @@ import {
   getWithdrawableBalance,
   getSettlementPage,
   getSettlementStats,
-  disburseToHost
+  disburseToHost,
+  getBillPage,
+  getBillStats,
+  payBill,
+  markOverdueBills
 } from '@/api/marrylink-api'
 
 // ==================== 统计数据 ====================
 const stats = ref({})
 const settlementStats = ref({})
+const billStats = ref({})
 
 async function fetchStats() {
   try {
-    const [commStats, settStats] = await Promise.all([
+    const [commStats, settStats, bStats] = await Promise.all([
       getCommissionStats(),
-      getSettlementStats()
+      getSettlementStats(),
+      getBillStats()
     ])
     stats.value = commStats
     settlementStats.value = settStats
+    billStats.value = bStats
   } catch (e) {
     console.error('获取统计数据失败', e)
   }
@@ -641,6 +751,79 @@ function getWithdrawalStatusText(status) {
   return texts[status] || '未知'
 }
 
+// ==================== 佣金账单 ====================
+const billQuery = reactive({ current: 1, size: 10, orderNo: '', hostName: '', status: null })
+const billData = ref([])
+const billTotal = ref(0)
+const billLoading = ref(false)
+
+async function fetchBills() {
+  billLoading.value = true
+  try {
+    const res = await getBillPage(billQuery)
+    billData.value = res.records
+    billTotal.value = res.total
+  } finally {
+    billLoading.value = false
+  }
+}
+
+function handleBillQuery() {
+  billQuery.current = 1
+  fetchBills()
+}
+
+function handleResetBillQuery() {
+  billQuery.orderNo = ''
+  billQuery.hostName = ''
+  billQuery.status = null
+  handleBillQuery()
+}
+
+function getBillStatusType(status) {
+  const types = { 1: 'warning', 2: 'success', 3: 'danger' }
+  return types[status] || 'info'
+}
+
+function getBillStatusText(status) {
+  const texts = { 1: '待支付', 2: '已支付', 3: '已逾期' }
+  return texts[status] || '未知'
+}
+
+async function handleAdminPayBill(row) {
+  ElMessageBox.confirm(
+    `确认代主持人 ${row.hostName} 支付佣金 ¥${row.commissionAmount}？`,
+    '确认代付',
+    { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+  ).then(async () => {
+    try {
+      await payBill(row.id)
+      ElMessage.success('代付成功')
+      fetchBills()
+      fetchStats()
+    } catch (e) {
+      ElMessage.error(e.message || '代付失败')
+    }
+  })
+}
+
+async function handleMarkOverdue() {
+  ElMessageBox.confirm('将所有超过支付期限的待支付账单标记为已逾期？', '标记逾期', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await markOverdueBills()
+      ElMessage.success(`已标记 ${res.markedCount || 0} 条逾期账单`)
+      fetchBills()
+      fetchStats()
+    } catch (e) {
+      ElMessage.error(e.message || '操作失败')
+    }
+  })
+}
+
 // ==================== 初始化 ====================
 onMounted(() => {
   fetchStats()
@@ -648,6 +831,7 @@ onMounted(() => {
   fetchRecords()
   fetchConfig()
   fetchWithdrawals()
+  fetchBills()
 })
 </script>
 

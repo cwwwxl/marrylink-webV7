@@ -13,6 +13,7 @@ import com.marrylink.enums.UserType;
 import com.marrylink.security.CustomUserDetails;
 import com.marrylink.security.JwtTokenProvider;
 import com.marrylink.service.AccountMappingService;
+import com.marrylink.service.IHostCommissionBillService;
 import com.marrylink.service.IUserService;
 import com.marrylink.service.PermissionService;
 import com.marrylink.service.RoleService;
@@ -50,6 +51,7 @@ public class AuthController {
     private final PermissionService permissionService;
     private final UserRoleService userRoleService;
     private final PasswordEncoder passwordEncoder;
+    private final IHostCommissionBillService hostCommissionBillService;
     
     /**
      * Web端登录（管理员和主持人）
@@ -74,13 +76,20 @@ public class AuthController {
             
             // 获取用户详情
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-            
+
+            // 检查主持人是否有逾期未支付的佣金账单
+            if ("HOST".equals(type) && userDetails.getRefId() != null) {
+                if (hostCommissionBillService.hasOverdueBills(userDetails.getRefId())) {
+                    return Result.error("您有逾期未支付的佣金账单，账号已被限制登录");
+                }
+            }
+
             // 生成 Token
             String token = tokenProvider.generateToken(userDetails);
-            
+
             // 将用户信息存入Redis，key为token
             tokenProvider.saveTokenToRedis(token, userDetails);
-            
+
             // 构建响应（兼容Web端旧格式）
             LoginResponse response = LoginResponse.builder()
                 .token(token)
@@ -94,26 +103,26 @@ public class AuthController {
                 .roles(userDetails.getRoles())
                 .permissions(userDetails.getPermissions())
                 .build();
-            
+
             log.info("Web login success: accountId={}, refId={}, userType={}",
                      userDetails.getAccountId(), userDetails.getRefId(), userDetails.getUserType());
-            
+
             return Result.ok(response);
-            
+
         } catch (Exception e) {
             log.error("Web login failed: username={}, userType={}", username, userType, e);
             return Result.error("登录失败：用户名或密码错误");
         }
     }
-    
+
     /**
      * 用户登录（App端）
      */
     @PostMapping("/login")
     public Result<LoginResponse> login(@Validated @RequestBody LoginRequest request) {
-        log.info("User login attempt: accountId={}, userType={}", 
+        log.info("User login attempt: accountId={}, userType={}",
                  request.getAccountId(), request.getUserType());
-        
+
         try {
             // 去除首尾空格
             String accountId = request.getAccountId().trim();
@@ -122,14 +131,21 @@ public class AuthController {
 
             // 构建用户名（格式: accountId:userType）
             String username = accountId + ":" + userType;
-            
+
             // 执行认证
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
             );
-            
+
             // 获取用户详情
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            // 检查主持人是否有逾期未支付的佣金账单
+            if ("HOST".equals(userType) && userDetails.getRefId() != null) {
+                if (hostCommissionBillService.hasOverdueBills(userDetails.getRefId())) {
+                    return Result.error("您有逾期未支付的佣金账单，账号已被限制登录");
+                }
+            }
             
             // 生成 Token
             String token = tokenProvider.generateToken(userDetails);

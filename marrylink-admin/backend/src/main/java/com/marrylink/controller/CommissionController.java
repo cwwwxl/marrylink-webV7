@@ -6,12 +6,15 @@ import com.marrylink.common.PageResult;
 import com.marrylink.common.Result;
 import com.marrylink.entity.CommissionConfig;
 import com.marrylink.entity.CommissionRecord;
+import com.marrylink.entity.HostCommissionBill;
 import com.marrylink.entity.HostSettlement;
 import com.marrylink.entity.PlatformWithdrawal;
 import com.marrylink.service.ICommissionConfigService;
 import com.marrylink.service.ICommissionRecordService;
+import com.marrylink.service.IHostCommissionBillService;
 import com.marrylink.service.IHostSettlementService;
 import com.marrylink.service.IPlatformWithdrawalService;
+import com.marrylink.utils.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -33,6 +36,8 @@ public class CommissionController {
     private IPlatformWithdrawalService platformWithdrawalService;
     @Resource
     private IHostSettlementService hostSettlementService;
+    @Resource
+    private IHostCommissionBillService hostCommissionBillService;
 
     // ==================== 抽成配置 ====================
 
@@ -194,6 +199,88 @@ public class CommissionController {
         String payAccount = params.get("payAccount");
         String payRemark = params.get("payRemark");
         hostSettlementService.disburse(id, payMethod, payAccount, payRemark);
+        return Result.ok();
+    }
+
+    // ==================== 佣金账单 ====================
+
+    /** 分页查询佣金账单 */
+    @GetMapping("/bill/page")
+    public Result<PageResult<HostCommissionBill>> getBillPage(
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String hostName,
+            @RequestParam(required = false) String orderNo) {
+
+        Page<HostCommissionBill> page = new Page<>(current, size);
+        LambdaQueryWrapper<HostCommissionBill> wrapper = new LambdaQueryWrapper<>();
+
+        if (status != null) {
+            wrapper.eq(HostCommissionBill::getStatus, status);
+        }
+        if (hostName != null && !hostName.isEmpty()) {
+            wrapper.like(HostCommissionBill::getHostName, hostName);
+        }
+        if (orderNo != null && !orderNo.isEmpty()) {
+            wrapper.like(HostCommissionBill::getOrderNo, orderNo);
+        }
+
+        wrapper.orderByDesc(HostCommissionBill::getCreateTime);
+        hostCommissionBillService.page(page, wrapper);
+
+        return Result.ok(PageResult.of(page));
+    }
+
+    /** 获取佣金账单统计 */
+    @GetMapping("/bill/stats")
+    public Result<Map<String, Object>> getBillStats() {
+        return Result.ok(hostCommissionBillService.getBillStats());
+    }
+
+    /** 管理员代主持人支付账单 */
+    @PostMapping("/bill/{id}/pay")
+    public Result<Void> payBill(@PathVariable Long id) {
+        hostCommissionBillService.payBill(id, null);
+        return Result.ok();
+    }
+
+    /** 批量标记逾期账单 */
+    @PostMapping("/bill/mark-overdue")
+    public Result<Map<String, Object>> markOverdueBills() {
+        int count = hostCommissionBillService.markOverdueBills();
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("markedCount", count);
+        return Result.ok(result);
+    }
+
+    /** 主持人查看自己的账单 */
+    @GetMapping("/bill/my")
+    public Result<PageResult<HostCommissionBill>> getMyBills(
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @RequestParam(required = false) Integer status) {
+
+        Long hostId = SecurityUtils.getCurrentRefId();
+        Page<HostCommissionBill> page = new Page<>(current, size);
+        LambdaQueryWrapper<HostCommissionBill> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HostCommissionBill::getHostId, hostId);
+
+        if (status != null) {
+            wrapper.eq(HostCommissionBill::getStatus, status);
+        }
+
+        wrapper.orderByDesc(HostCommissionBill::getCreateTime);
+        hostCommissionBillService.page(page, wrapper);
+
+        return Result.ok(PageResult.of(page));
+    }
+
+    /** 主持人支付自己的账单 */
+    @PostMapping("/bill/{id}/host-pay")
+    public Result<Void> hostPayBill(@PathVariable Long id) {
+        Long hostId = SecurityUtils.getCurrentRefId();
+        hostCommissionBillService.payBill(id, hostId);
         return Result.ok();
     }
 }

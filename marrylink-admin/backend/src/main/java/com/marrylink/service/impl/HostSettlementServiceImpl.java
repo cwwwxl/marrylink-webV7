@@ -2,13 +2,18 @@ package com.marrylink.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.marrylink.entity.Host;
 import com.marrylink.entity.HostSettlement;
 import com.marrylink.exception.BusinessException;
 import com.marrylink.mapper.HostSettlementMapper;
+import com.marrylink.service.IHostService;
 import com.marrylink.service.IHostSettlementService;
 import com.marrylink.utils.SecurityUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.annotation.Resource;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -19,6 +24,10 @@ import java.util.Map;
 @Service
 public class HostSettlementServiceImpl extends ServiceImpl<HostSettlementMapper, HostSettlement>
         implements IHostSettlementService {
+
+    @Resource
+    @Lazy
+    private IHostService hostService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -31,6 +40,11 @@ public class HostSettlementServiceImpl extends ServiceImpl<HostSettlementMapper,
             return;
         }
 
+        // 获取主持人收款账户信息
+        Host host = hostService.getById(hostId);
+        String payMethod = host != null && host.getPayAccountType() != null ? host.getPayAccountType() : "";
+        String payAccount = host != null && host.getPayAccountNo() != null ? host.getPayAccountNo() : "";
+
         HostSettlement settlement = new HostSettlement();
         settlement.setOrderNo(orderNo);
         settlement.setOrderId(orderId);
@@ -39,7 +53,12 @@ public class HostSettlementServiceImpl extends ServiceImpl<HostSettlementMapper,
         settlement.setHostAmount(orderAmount.subtract(commissionAmount));
         settlement.setHostId(hostId);
         settlement.setHostName(hostName);
-        settlement.setStatus(1); // 待下发
+        // 自动下发：全额打给主持人，状态直接设为已下发
+        settlement.setStatus(2);
+        settlement.setPayMethod(payMethod);
+        settlement.setPayAccount(payAccount);
+        settlement.setPayTime(LocalDateTime.now());
+        settlement.setOperator("系统自动下发");
         save(settlement);
     }
 

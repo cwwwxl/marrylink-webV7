@@ -34,4 +34,10 @@ public class Host {
     @TableField(exist = false)
     private List<String> tags;
     private String description;
+    /** 收款方式(支付宝/银行卡/微信) */
+    private String payAccountType;
+    /** 收款账号 */
+    private String payAccountNo;
+    /** 收款人姓名 */
+    private String payAccountName;
 }

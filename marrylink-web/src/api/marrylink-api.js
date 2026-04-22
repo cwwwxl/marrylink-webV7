@@ -178,3 +178,9 @@ export const getWithdrawableBalance = () => get('/commission/withdrawal/balance'
 export const getSettlementPage = (params) => get('/commission/settlement/page', params)
 export const getSettlementStats = () => get('/commission/settlement/stats')
 export const disburseToHost = (id, data) => put(`/commission/settlement/${id}/disburse`, data)
+
+// 佣金账单管理
+export const getBillPage = (params) => get('/commission/bill/page', params)
+export const getBillStats = () => get('/commission/bill/stats')
+export const payBill = (id) => post(`/commission/bill/${id}/pay`)
+export const markOverdueBills = () => post('/commission/bill/mark-overdue')

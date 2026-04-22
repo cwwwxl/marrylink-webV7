@@ -10,6 +10,7 @@ import com.marrylink.exception.BusinessException;
 import com.marrylink.mapper.CommissionRecordMapper;
 import com.marrylink.service.ICommissionConfigService;
 import com.marrylink.service.ICommissionRecordService;
+import com.marrylink.service.IHostCommissionBillService;
 import com.marrylink.service.IHostSettlementService;
 import com.marrylink.service.IPlatformWithdrawalService;
 import org.springframework.context.annotation.Lazy;
@@ -38,6 +39,10 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
     @Resource
     @Lazy
     private IHostSettlementService hostSettlementService;
+
+    @Resource
+    @Lazy
+    private IHostCommissionBillService hostCommissionBillService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -70,7 +75,7 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
             commissionAmount = config.getMinAmount();
         }
 
-        // 创建抽成记录
+        // 创建抽成记录（待结算，等主持人支付佣金后变为已结算）
         CommissionRecord record = new CommissionRecord();
         record.setOrderNo(order.getOrderNo());
         record.setOrderId(order.getId());
@@ -82,10 +87,15 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
         record.setStatus(1); // 待结算
         save(record);
 
-        // 同时创建主持人结算记录（订单金额 - 抽成 = 主持人应收）
+        // 创建主持人下发记录（全额打给主持人，自动标记为已下发）
         hostSettlementService.createSettlement(
                 order.getOrderNo(), order.getId(), orderAmount,
-                commissionAmount, order.getHostId(), order.getHostName());
+                BigDecimal.ZERO, order.getHostId(), order.getHostName());
+
+        // 创建佣金账单发送给主持人（主持人需在7天内支付）
+        hostCommissionBillService.createBill(
+                order.getOrderNo(), order.getId(), orderAmount,
+                rate, commissionAmount, order.getHostId(), order.getHostName());
     }
 
     @Override
