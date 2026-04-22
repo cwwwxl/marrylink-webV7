@@ -53,7 +53,7 @@ public class HostSettlementServiceImpl extends ServiceImpl<HostSettlementMapper,
         settlement.setHostAmount(orderAmount.subtract(commissionAmount));
         settlement.setHostId(hostId);
         settlement.setHostName(hostName);
-        // 自动下发：全额打给主持人，状态直接设为已下发
+        // 订单完成后自动下发：全额打给主持人（后台可设置收款账号），状态直接设为已下发
         settlement.setStatus(2);
         settlement.setPayMethod(payMethod);
         settlement.setPayAccount(payAccount);

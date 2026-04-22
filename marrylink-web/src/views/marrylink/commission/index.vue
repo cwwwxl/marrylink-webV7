@@ -52,6 +52,18 @@
       </el-col>
     </el-row>
 
+    <!-- 资金流转说明 -->
+    <el-row :gutter="16" style="margin-bottom: 20px;">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <div style="padding: 8px 0; font-size: 13px; color: #606266; line-height: 2;">
+            <strong>资金流转说明：</strong>
+            用户付款 → 平台存管 → 订单完成 → 全额打给主持人 → 发送佣金账单给主持人 → 主持人支付佣金 → 佣金存入平台 → 平台提现 | 主持人7天未支付 → 自动限制登录
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 佣金账单统计 -->
     <el-row :gutter="16" style="margin-bottom: 20px;">
       <el-col :span="6">

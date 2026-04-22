@@ -135,12 +135,14 @@
                 'other-month': day.isOtherMonth,
                 'has-event': day.hasEvent,
                 'occupied': day.status == 3,
+                'escrow': day.status == 2,
                 'locked': day.status == 1
               }"
               @click="handleDayClick(day)"
             >
               <text class="day-number">{{ day.day }}</text>
               <text class="day-status" v-if="day.status == 1">待确认</text>
+              <text class="day-status" v-if="day.status == 2">已付款(存管)</text>
               <text class="day-status" v-if="day.status == 3">定金已付，待主持</text>
               <view class="day-dot" v-if="day.hasEvent && !day.status"></view>
             </view>
@@ -1232,17 +1234,33 @@ export default {
         }
       }
       
+      &.escrow {
+        background: #ecf5ff;
+
+        .day-number {
+          color: #409eff;
+        }
+
+        .day-status {
+          color: #409eff;
+        }
+
+        .day-dot {
+          background: #409eff;
+        }
+      }
+
       &.locked {
         background: #FFF3E0;
-        
+
         .day-number {
           color: #f59e0b;
         }
-        
+
         .day-status {
           color: #f59e0b;
         }
-        
+
         .day-dot {
           background: #f59e0b;
         }

@@ -75,7 +75,7 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
             commissionAmount = config.getMinAmount();
         }
 
-        // 创建抽成记录（待结算，等主持人支付佣金后变为已结算）
+        // 创建抽成记录（待结算，主持人支付佣金后自动变为已结算）
         CommissionRecord record = new CommissionRecord();
         record.setOrderNo(order.getOrderNo());
         record.setOrderId(order.getId());
@@ -87,12 +87,12 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
         record.setStatus(1); // 待结算
         save(record);
 
-        // 创建主持人下发记录（全额打给主持人，自动标记为已下发）
+        // 订单完成 → 全额打给主持人（后台可设置收款账号），自动标记为已下发
         hostSettlementService.createSettlement(
                 order.getOrderNo(), order.getId(), orderAmount,
                 BigDecimal.ZERO, order.getHostId(), order.getHostName());
 
-        // 创建佣金账单发送给主持人（主持人需在7天内支付）
+        // 发送佣金账单给主持人（主持人需在7天内支付，逾期将限制登录）
         hostCommissionBillService.createBill(
                 order.getOrderNo(), order.getId(), orderAmount,
                 rate, commissionAmount, order.getHostId(), order.getHostName());

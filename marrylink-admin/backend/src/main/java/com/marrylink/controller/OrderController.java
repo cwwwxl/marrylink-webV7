@@ -17,6 +17,7 @@ import com.marrylink.service.ICommissionRecordService;
 import com.marrylink.service.IQuestionnaireSubmissionService;
 import com.marrylink.service.IUserService;
 import com.marrylink.utils.SecurityUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/order")
 public class OrderController {
@@ -138,7 +140,10 @@ public class OrderController {
         String ip = getClientIp(request);
         orderLogService.logOrderStatusChange(order.getOrderNo(), oldOrder.getStatus(), order.getStatus(), operator, ip);
 
-        if (3 == order.getStatus()) {
+        if (2 == order.getStatus()) {
+            // 用户付款，资金存管在平台
+            log.info("订单 {} 用户已付款，资金进入平台存管", order.getOrderNo() != null ? order.getOrderNo() : oldOrder.getOrderNo());
+        } else if (3 == order.getStatus()) {
             qsService.createQS(order);
         } else if (4 == order.getStatus()) {
             // 订单完成时自动生成平台抽成记录
@@ -180,7 +185,10 @@ public class OrderController {
         String ip = getClientIp(request);
         orderLogService.logOrderStatusChange(oldOrder.getOrderNo(), oldOrder.getStatus(), status, operator, ip);
 
-        if (3 == status) {
+        if (2 == status) {
+            // 用户付款，资金存管在平台
+            log.info("订单 {} 用户已付款，资金进入平台存管", oldOrder.getOrderNo());
+        } else if (3 == status) {
             qsService.createQS(orderForQs);
         } else if (4 == status) {
             // 订单完成时自动生成平台抽成记录

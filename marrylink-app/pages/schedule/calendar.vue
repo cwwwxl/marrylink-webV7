@@ -24,6 +24,10 @@
         <text>待确认</text>
       </view>
       <view class="legend-item">
+        <view class="dot escrow"></view>
+        <text>已付款(存管)</text>
+      </view>
+      <view class="legend-item">
         <view class="dot occupied"></view>
         <text>已占用</text>
       </view>
@@ -209,17 +213,20 @@ export default {
     },
     getScheduleStatus(status) {
       if (status === 3) return 'occupied'
+      if (status === 2) return 'escrow'
       if (status === 1) return 'pending'
       return null
     },
     getStatusText(status) {
       if (status === 'occupied') return '已占用'
+      if (status === 'escrow') return '已付款(存管)'
       if (status === 'pending') return '待确认'
     },
     getDayClass(day) {
       if (!day.day) return 'empty'
       if (day.disabled) return 'disabled'
       if (day.status === 'occupied') return 'occupied'
+      if (day.status === 'escrow') return 'escrow'
       if (day.status === 'pending') return 'pending'
       return 'available'
     },
@@ -238,7 +245,7 @@ export default {
     handleDayClick(day) {
       if (!day.day || day.disabled) return
       if (this.isHost) return
-      if (day.status === 'occupied' || day.status === 'pending') {
+      if (day.status === 'occupied' || day.status === 'escrow' || day.status === 'pending') {
         uni.showToast({ title: '该日期已被预约', icon: 'none' })
         return
       }
@@ -353,6 +360,9 @@ export default {
     &.pending {
       background-color: #e6a23c;
     }
+    &.escrow {
+      background-color: #409eff;
+    }
     &.occupied {
       background-color: #1d4ed8;
     }
@@ -399,6 +409,9 @@ export default {
     &.pending {
       color: #e6a23c;
     }
+    &.escrow {
+      color: #409eff;
+    }
     &.occupied {
       color: #1d4ed8;
     }
@@ -414,6 +427,9 @@ export default {
   }
   &.pending {
     background-color: #fef5e7;
+  }
+  &.escrow {
+    background-color: #ecf5ff;
   }
   &.occupied {
     background-color: #ecf5ff;

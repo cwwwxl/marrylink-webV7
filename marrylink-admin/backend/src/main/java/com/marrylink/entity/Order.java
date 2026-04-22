@@ -19,7 +19,7 @@ public class Order {
     private LocalDate weddingDate;
     private String weddingType;
     private BigDecimal amount;
-    //1: '待确认', 3: '定金已付', 4: '已完成', 5: '已取消'
+    //1: '待确认', 2: '已付款(平台存管)', 3: '定金已付', 4: '已完成', 5: '已取消'
     private Integer status;
     /** 用户评分 1-5星，null表示未评分 */
     private Integer rating;
