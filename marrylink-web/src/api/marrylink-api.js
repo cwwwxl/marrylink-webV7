@@ -173,3 +173,8 @@ export const getWithdrawalPage = (params) => get('/commission/withdrawal/page', 
 export const applyWithdrawal = (data) => post('/commission/withdrawal', data)
 export const updateWithdrawalStatus = (id, status) => put(`/commission/withdrawal/${id}/status`, null, { params: { status } })
 export const getWithdrawableBalance = () => get('/commission/withdrawal/balance')
+
+// 主持人下发管理
+export const getSettlementPage = (params) => get('/commission/settlement/page', params)
+export const getSettlementStats = () => get('/commission/settlement/stats')
+export const disburseToHost = (id, data) => put(`/commission/settlement/${id}/disburse`, data)

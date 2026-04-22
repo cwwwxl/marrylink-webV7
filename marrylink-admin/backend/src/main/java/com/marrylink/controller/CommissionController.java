@@ -6,9 +6,11 @@ import com.marrylink.common.PageResult;
 import com.marrylink.common.Result;
 import com.marrylink.entity.CommissionConfig;
 import com.marrylink.entity.CommissionRecord;
+import com.marrylink.entity.HostSettlement;
 import com.marrylink.entity.PlatformWithdrawal;
 import com.marrylink.service.ICommissionConfigService;
 import com.marrylink.service.ICommissionRecordService;
+import com.marrylink.service.IHostSettlementService;
 import com.marrylink.service.IPlatformWithdrawalService;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +31,8 @@ public class CommissionController {
     private ICommissionRecordService commissionRecordService;
     @Resource
     private IPlatformWithdrawalService platformWithdrawalService;
+    @Resource
+    private IHostSettlementService hostSettlementService;
 
     // ==================== 抽成配置 ====================
 
@@ -145,5 +149,51 @@ public class CommissionController {
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("balance", commissionRecordService.getWithdrawableBalance());
         return Result.ok(result);
+    }
+
+    // ==================== 主持人下发 ====================
+
+    /** 分页查询主持人结算记录 */
+    @GetMapping("/settlement/page")
+    public Result<PageResult<HostSettlement>> getSettlementPage(
+            @RequestParam(defaultValue = "1") Long current,
+            @RequestParam(defaultValue = "10") Long size,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String hostName,
+            @RequestParam(required = false) String orderNo) {
+
+        Page<HostSettlement> page = new Page<>(current, size);
+        LambdaQueryWrapper<HostSettlement> wrapper = new LambdaQueryWrapper<>();
+
+        if (status != null) {
+            wrapper.eq(HostSettlement::getStatus, status);
+        }
+        if (hostName != null && !hostName.isEmpty()) {
+            wrapper.like(HostSettlement::getHostName, hostName);
+        }
+        if (orderNo != null && !orderNo.isEmpty()) {
+            wrapper.like(HostSettlement::getOrderNo, orderNo);
+        }
+
+        wrapper.orderByDesc(HostSettlement::getCreateTime);
+        hostSettlementService.page(page, wrapper);
+
+        return Result.ok(PageResult.of(page));
+    }
+
+    /** 获取主持人下发统计 */
+    @GetMapping("/settlement/stats")
+    public Result<Map<String, Object>> getSettlementStats() {
+        return Result.ok(hostSettlementService.getSettlementStats());
+    }
+
+    /** 手动下发给主持人 */
+    @PutMapping("/settlement/{id}/disburse")
+    public Result<Void> disburseToHost(@PathVariable Long id, @RequestBody Map<String, String> params) {
+        String payMethod = params.get("payMethod");
+        String payAccount = params.get("payAccount");
+        String payRemark = params.get("payRemark");
+        hostSettlementService.disburse(id, payMethod, payAccount, payRemark);
+        return Result.ok();
     }
 }

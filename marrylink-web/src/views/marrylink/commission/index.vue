@@ -1,32 +1,32 @@
 <template>
   <div class="app-container">
     <!-- 统计卡片 -->
-    <el-row :gutter="20" style="margin-bottom: 20px;">
-      <el-col :span="6">
+    <el-row :gutter="16" style="margin-bottom: 20px;">
+      <el-col :span="4">
         <el-card shadow="hover">
           <div class="stat-card">
-            <div class="stat-label">总抽成金额</div>
+            <div class="stat-label">平台总收入</div>
             <div class="stat-value">¥{{ stats.totalCommission || '0.00' }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card shadow="hover">
           <div class="stat-card">
-            <div class="stat-label">待结算金额</div>
+            <div class="stat-label">待结算抽成</div>
             <div class="stat-value pending">¥{{ stats.pendingAmount || '0.00' }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card shadow="hover">
           <div class="stat-card">
-            <div class="stat-label">已结算金额</div>
+            <div class="stat-label">已结算抽成</div>
             <div class="stat-value settled">¥{{ stats.settledAmount || '0.00' }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card shadow="hover">
           <div class="stat-card">
             <div class="stat-label">可提现余额</div>
@@ -34,10 +34,94 @@
           </div>
         </el-card>
       </el-col>
+      <el-col :span="4">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">待下发主持人</div>
+            <div class="stat-value pending">¥{{ settlementStats.pendingDisburse || '0.00' }}</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="4">
+        <el-card shadow="hover">
+          <div class="stat-card">
+            <div class="stat-label">已下发主持人</div>
+            <div class="stat-value success">¥{{ settlementStats.disbursedAmount || '0.00' }}</div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- Tab 页签 -->
     <el-tabs v-model="activeTab" type="border-card">
+      <!-- 主持人下发 -->
+      <el-tab-pane label="主持人下发" name="settlement">
+        <div class="search-container">
+          <el-form :model="settlementQuery" :inline="true">
+            <el-form-item label="订单号">
+              <el-input v-model="settlementQuery.orderNo" placeholder="订单号" clearable @keyup.enter="handleSettlementQuery" />
+            </el-form-item>
+            <el-form-item label="主持人">
+              <el-input v-model="settlementQuery.hostName" placeholder="主持人姓名" clearable @keyup.enter="handleSettlementQuery" />
+            </el-form-item>
+            <el-form-item label="状态" style="width: 150px;">
+              <el-select v-model="settlementQuery.status" placeholder="全部" clearable>
+                <el-option label="待下发" :value="1" />
+                <el-option label="已下发" :value="2" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" icon="search" @click="handleSettlementQuery">搜索</el-button>
+              <el-button icon="refresh" @click="handleResetSettlementQuery">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <el-table v-loading="settlementLoading" :data="settlementData" border stripe>
+          <el-table-column label="订单号" prop="orderNo" width="150" />
+          <el-table-column label="主持人" prop="hostName" width="120" />
+          <el-table-column label="订单金额" width="110">
+            <template #default="scope">¥{{ scope.row.orderAmount }}</template>
+          </el-table-column>
+          <el-table-column label="平台抽成" width="110">
+            <template #default="scope">
+              <span style="color: #e6a23c;">¥{{ scope.row.commissionAmount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="主持人应收" width="120">
+            <template #default="scope">
+              <span style="color: #409eff; font-weight: bold;">¥{{ scope.row.hostAmount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 1 ? 'warning' : 'success'">
+                {{ scope.row.status === 1 ? '待下发' : '已下发' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="下发方式" prop="payMethod" width="100" />
+          <el-table-column label="收款账号" prop="payAccount" width="150" />
+          <el-table-column label="操作人" prop="operator" width="100" />
+          <el-table-column label="下发时间" prop="payTime" width="170" />
+          <el-table-column label="创建时间" prop="createTime" width="170" />
+          <el-table-column label="操作" fixed="right" width="100">
+            <template #default="scope">
+              <el-button v-if="scope.row.status === 1" type="primary" link size="small" @click="handleOpenDisburseDialog(scope.row)">下发</el-button>
+              <span v-else style="color: #909399;">已完成</span>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <pagination
+          v-if="settlementTotal > 0"
+          v-model:total="settlementTotal"
+          v-model:page="settlementQuery.current"
+          v-model:limit="settlementQuery.size"
+          @pagination="fetchSettlements"
+        />
+      </el-tab-pane>
+
       <!-- 抽成记录 -->
       <el-tab-pane label="抽成记录" name="records">
         <div class="search-container">
@@ -125,8 +209,8 @@
         </el-card>
       </el-tab-pane>
 
-      <!-- 提现管理 -->
-      <el-tab-pane label="提现管理" name="withdrawal">
+      <!-- 平台提现 -->
+      <el-tab-pane label="平台提现" name="withdrawal">
         <div class="search-container" style="display: flex; justify-content: space-between; align-items: center;">
           <el-form :model="withdrawalQuery" :inline="true">
             <el-form-item label="状态" style="width: 150px;">
@@ -188,6 +272,36 @@
       </el-tab-pane>
     </el-tabs>
 
+    <!-- 下发弹窗 -->
+    <el-dialog v-model="disburseDialog.visible" title="下发给主持人" width="500px" @close="handleCloseDisburseDialog">
+      <div style="margin-bottom: 15px; padding: 12px; background: #ecf5ff; border-radius: 4px; line-height: 2;">
+        <div>订单号: <strong>{{ disburseDialog.orderNo }}</strong></div>
+        <div>主持人: <strong>{{ disburseDialog.hostName }}</strong></div>
+        <div>订单金额: ¥{{ disburseDialog.orderAmount }} | 平台抽成: ¥{{ disburseDialog.commissionAmount }}</div>
+        <div>应下发金额: <span style="color: #409eff; font-weight: bold; font-size: 18px;">¥{{ disburseDialog.hostAmount }}</span></div>
+      </div>
+      <el-form :model="disburseForm" :rules="disburseRules" ref="disburseFormRef" label-width="100px">
+        <el-form-item label="下发方式" prop="payMethod">
+          <el-select v-model="disburseForm.payMethod" placeholder="请选择" style="width: 100%;">
+            <el-option label="支付宝" value="支付宝" />
+            <el-option label="银行卡" value="银行卡" />
+            <el-option label="微信" value="微信" />
+            <el-option label="现金" value="现金" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="收款账号" prop="payAccount">
+          <el-input v-model="disburseForm.payAccount" placeholder="主持人收款账号" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="disburseForm.payRemark" type="textarea" :rows="2" placeholder="下发备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="handleCloseDisburseDialog">取消</el-button>
+        <el-button type="primary" @click="handleSubmitDisburse">确认下发</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 提现申请弹窗 -->
     <el-dialog v-model="withdrawalDialog.visible" title="发起提现" width="500px" @close="handleCloseWithdrawalDialog">
       <div style="margin-bottom: 15px; padding: 10px; background: #f0f9eb; border-radius: 4px;">
@@ -235,22 +349,107 @@ import {
   getWithdrawalPage,
   applyWithdrawal,
   updateWithdrawalStatus,
-  getWithdrawableBalance
+  getWithdrawableBalance,
+  getSettlementPage,
+  getSettlementStats,
+  disburseToHost
 } from '@/api/marrylink-api'
 
 // ==================== 统计数据 ====================
 const stats = ref({})
+const settlementStats = ref({})
 
 async function fetchStats() {
   try {
-    stats.value = await getCommissionStats()
+    const [commStats, settStats] = await Promise.all([
+      getCommissionStats(),
+      getSettlementStats()
+    ])
+    stats.value = commStats
+    settlementStats.value = settStats
   } catch (e) {
     console.error('获取统计数据失败', e)
   }
 }
 
 // ==================== Tab ====================
-const activeTab = ref('records')
+const activeTab = ref('settlement')
+
+// ==================== 主持人下发 ====================
+const settlementQuery = reactive({ current: 1, size: 10, orderNo: '', hostName: '', status: null })
+const settlementData = ref([])
+const settlementTotal = ref(0)
+const settlementLoading = ref(false)
+
+async function fetchSettlements() {
+  settlementLoading.value = true
+  try {
+    const res = await getSettlementPage(settlementQuery)
+    settlementData.value = res.records
+    settlementTotal.value = res.total
+  } finally {
+    settlementLoading.value = false
+  }
+}
+
+function handleSettlementQuery() {
+  settlementQuery.current = 1
+  fetchSettlements()
+}
+
+function handleResetSettlementQuery() {
+  settlementQuery.orderNo = ''
+  settlementQuery.hostName = ''
+  settlementQuery.status = null
+  handleSettlementQuery()
+}
+
+// 下发弹窗
+const disburseDialog = reactive({ visible: false, id: null, orderNo: '', hostName: '', orderAmount: '', commissionAmount: '', hostAmount: '' })
+const disburseForm = reactive({ payMethod: '', payAccount: '', payRemark: '' })
+const disburseFormRef = ref()
+const disburseRules = {
+  payMethod: [{ required: true, message: '请选择下发方式', trigger: 'change' }],
+  payAccount: [{ required: true, message: '请输入收款账号', trigger: 'blur' }]
+}
+
+function handleOpenDisburseDialog(row) {
+  disburseDialog.visible = true
+  disburseDialog.id = row.id
+  disburseDialog.orderNo = row.orderNo
+  disburseDialog.hostName = row.hostName
+  disburseDialog.orderAmount = row.orderAmount
+  disburseDialog.commissionAmount = row.commissionAmount
+  disburseDialog.hostAmount = row.hostAmount
+}
+
+function handleCloseDisburseDialog() {
+  disburseDialog.visible = false
+  disburseFormRef.value?.resetFields()
+  Object.assign(disburseForm, { payMethod: '', payAccount: '', payRemark: '' })
+}
+
+async function handleSubmitDisburse() {
+  disburseFormRef.value.validate(async (valid) => {
+    if (valid) {
+      ElMessageBox.confirm(
+        `确认下发 ¥${disburseDialog.hostAmount} 给主持人 ${disburseDialog.hostName}？`,
+        '确认下发',
+        { confirmButtonText: '确认下发', cancelButtonText: '取消', type: 'warning' }
+      ).then(async () => {
+        try {
+          await disburseToHost(disburseDialog.id, disburseForm)
+          ElMessage.success('下发成功')
+          handleCloseDisburseDialog()
+          fetchSettlements()
+          fetchStats()
+        } catch (e) {
+          ElMessage.error(e.message || '下发失败')
+        }
+      })
+    }
+  })
+}
 
 // ==================== 抽成记录 ====================
 const recordQuery = reactive({ current: 1, size: 10, orderNo: '', hostName: '', status: null })
@@ -445,6 +644,7 @@ function getWithdrawalStatusText(status) {
 // ==================== 初始化 ====================
 onMounted(() => {
   fetchStats()
+  fetchSettlements()
   fetchRecords()
   fetchConfig()
   fetchWithdrawals()
@@ -457,12 +657,12 @@ onMounted(() => {
   padding: 10px 0;
 }
 .stat-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
   margin-bottom: 8px;
 }
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: bold;
   color: #303133;
 }

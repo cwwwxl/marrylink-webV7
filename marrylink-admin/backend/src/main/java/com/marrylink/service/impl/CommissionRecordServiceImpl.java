@@ -10,6 +10,7 @@ import com.marrylink.exception.BusinessException;
 import com.marrylink.mapper.CommissionRecordMapper;
 import com.marrylink.service.ICommissionConfigService;
 import com.marrylink.service.ICommissionRecordService;
+import com.marrylink.service.IHostSettlementService;
 import com.marrylink.service.IPlatformWithdrawalService;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,10 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
     @Resource
     @Lazy
     private IPlatformWithdrawalService platformWithdrawalService;
+
+    @Resource
+    @Lazy
+    private IHostSettlementService hostSettlementService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -76,6 +81,11 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
         record.setHostName(order.getHostName());
         record.setStatus(1); // 待结算
         save(record);
+
+        // 同时创建主持人结算记录（订单金额 - 抽成 = 主持人应收）
+        hostSettlementService.createSettlement(
+                order.getOrderNo(), order.getId(), orderAmount,
+                commissionAmount, order.getHostId(), order.getHostName());
     }
 
     @Override
