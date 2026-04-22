@@ -1335,19 +1335,29 @@ export default {
       font-size: 22rpx;
       margin-left: 12rpx;
       
-      &.status-confirmed {
+      &.status-1 {
+        background: #FFF3E0;
+        color: #f59e0b;
+      }
+
+      &.status-2 {
+        background: #E3F2FD;
+        color: #409eff;
+      }
+
+      &.status-3 {
         background: #d1fae5;
         color: #059669;
       }
-      
-      &.status-communicating {
-        background: #E3F2FD;
-        color: #4169E1;
+
+      &.status-4 {
+        background: #f0f9eb;
+        color: #67c23a;
       }
-      
-      &.status-pending {
-        background: #FFF3E0;
-        color: #f59e0b;
+
+      &.status-5 {
+        background: #fde2e2;
+        color: #f56c6c;
       }
     }
   }

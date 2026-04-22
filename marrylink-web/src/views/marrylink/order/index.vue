@@ -127,11 +127,11 @@
 
         <el-form-item label="订单状态" prop="status">
           <el-select v-model="formData.status" :disabled="isStatusDisabled">
-            <el-option label="待确认" :value="1" />
-            <el-option label="已付款(平台存管)" :value="2" />
-            <el-option label="定金已付" :value="3" />
-            <el-option label="已完成" :value="4" />
-            <el-option label="已取消" :value="5" />
+            <el-option v-if="allowedStatusOptions.includes(1)" label="待确认" :value="1" />
+            <el-option v-if="allowedStatusOptions.includes(2)" label="已付款(平台存管)" :value="2" />
+            <el-option v-if="allowedStatusOptions.includes(3)" label="定金已付" :value="3" />
+            <el-option v-if="allowedStatusOptions.includes(4)" label="已完成" :value="4" />
+            <el-option v-if="allowedStatusOptions.includes(5)" label="已取消" :value="5" />
           </el-select>
           <span v-if="isStatusDisabled" class="status-tip">（已完成或已取消的订单不能更改状态）</span>
         </el-form-item>
@@ -193,6 +193,19 @@ function isOrderFinished(status) {
 // 计算属性：判断状态是否禁用（已完成=4 或 已取消=5）
 const isStatusDisabled = computed(() => {
   return originalStatus.value === 4 || originalStatus.value === 5
+})
+
+// 根据当前状态限制可选目标状态
+const allowedStatusOptions = computed(() => {
+  const transitions = {
+    1: [1, 2, 3, 5],
+    2: [2, 3, 5],
+    3: [3, 4, 5],
+    4: [4],
+    5: [5]
+  }
+  const allowed = transitions[originalStatus.value] || [1, 2, 3, 4, 5]
+  return allowed
 })
 
 const rules = {

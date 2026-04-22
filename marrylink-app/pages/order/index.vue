@@ -321,16 +321,18 @@ export default {
     
     // ---- 主持人状态变更相关 ----
     showStatusActionSheet(order) {
-      const statusOptions = [
-        { status: 1, label: '待确认' },
-        { status: 2, label: '已付款(平台存管)' },
-        { status: 3, label: '定金已付' },
-        { status: 4, label: '已完成' },
-        { status: 5, label: '已取消' }
-      ]
-      // 过滤掉当前状态
-      const items = statusOptions.filter(s => s.status !== order.status)
-      
+      // 根据当前状态限制可选的目标状态（合法转换路径）
+      const validTransitions = {
+        1: [{ status: 2, label: '已付款(平台存管)' }, { status: 3, label: '定金已付' }, { status: 5, label: '已取消' }],
+        2: [{ status: 3, label: '定金已付' }, { status: 5, label: '已取消' }],
+        3: [{ status: 4, label: '已完成' }, { status: 5, label: '已取消' }]
+      }
+      const items = validTransitions[order.status]
+      if (!items || items.length === 0) {
+        uni.showToast({ title: '当前状态不可变更', icon: 'none' })
+        return
+      }
+
       uni.showActionSheet({
         itemList: items.map(s => s.label),
         success: (res) => {

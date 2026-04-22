@@ -137,6 +137,13 @@ public class OrderController {
         if (oldOrder == null) {
             return Result.error("订单不存在");
         }
+        // 如果传入了状态变更，验证转换是否合法
+        if (order.getStatus() != null && !order.getStatus().equals(oldOrder.getStatus())) {
+            if (!isValidStatusTransition(oldOrder.getStatus(), order.getStatus())) {
+                return Result.error("非法的状态变更：" + getStatusName(oldOrder.getStatus()) + " → " + getStatusName(order.getStatus()));
+            }
+        }
+
         orderService.updateById(order);
 
         // 使用oldOrder的orderNo作为兜底，防止请求体中未传orderNo导致NPE
@@ -146,17 +153,19 @@ public class OrderController {
         String ip = getClientIp(request);
         orderLogService.logOrderStatusChange(orderNo, oldOrder.getStatus(), order.getStatus(), operator, ip);
 
-        if (2 == order.getStatus()) {
-            // 用户付款，资金存管在平台
-            log.info("订单 {} 用户已付款，资金进入平台存管", orderNo);
-        } else if (3 == order.getStatus()) {
-            qsService.createQS(order);
-        } else if (4 == order.getStatus()) {
-            // 订单完成时自动生成平台抽成记录
-            Order fullOrder = orderService.getById(order.getId());
-            commissionRecordService.generateCommission(fullOrder);
-        } else if (5 == order.getStatus()){
-            qsService.deleteQSByNo(order);
+        if (order.getStatus() != null) {
+            if (2 == order.getStatus()) {
+                // 用户付款，资金存管在平台
+                log.info("订单 {} 用户已付款，资金进入平台存管", orderNo);
+            } else if (3 == order.getStatus()) {
+                qsService.createQS(order);
+            } else if (4 == order.getStatus()) {
+                // 订单完成时自动生成平台抽成记录
+                Order fullOrder = orderService.getById(order.getId());
+                commissionRecordService.generateCommission(fullOrder);
+            } else if (5 == order.getStatus()){
+                qsService.deleteQSByNo(order);
+            }
         }
         return Result.ok();
     }
@@ -167,6 +176,11 @@ public class OrderController {
         Order oldOrder = orderService.getById(id);
         if (oldOrder == null) {
             return Result.error("订单不存在");
+        }
+
+        // 验证状态转换是否合法
+        if (!isValidStatusTransition(oldOrder.getStatus(), status)) {
+            return Result.error("非法的状态变更：" + getStatusName(oldOrder.getStatus()) + " → " + getStatusName(status));
         }
 
         Order updateOrder = new Order();
@@ -222,6 +236,37 @@ public class OrderController {
         orderLogService.page(page, wrapper);
 
         return Result.ok(PageResult.of(page));
+    }
+
+    /**
+     * 验证订单状态转换是否合法
+     * 合法转换路径：1→2,3,5 | 2→3,5 | 3→4,5 | 4→无 | 5→无
+     */
+    private boolean isValidStatusTransition(Integer oldStatus, Integer newStatus) {
+        if (oldStatus == null || newStatus == null || oldStatus.equals(newStatus)) {
+            return false;
+        }
+        switch (oldStatus) {
+            case 1: return newStatus == 2 || newStatus == 3 || newStatus == 5;
+            case 2: return newStatus == 3 || newStatus == 5;
+            case 3: return newStatus == 4 || newStatus == 5;
+            case 4:
+            case 5:
+                return false;
+            default: return false;
+        }
+    }
+
+    private String getStatusName(Integer status) {
+        if (status == null) return "未知";
+        switch (status) {
+            case 1: return "待确认";
+            case 2: return "已付款(平台存管)";
+            case 3: return "定金已付";
+            case 4: return "已完成";
+            case 5: return "已取消";
+            default: return "未知";
+        }
     }
 
     private String getClientIp(HttpServletRequest request) {

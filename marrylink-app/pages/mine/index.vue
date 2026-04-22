@@ -30,9 +30,14 @@
             <text class="status-text">待确认</text>
             <view class="status-badge" v-if="orderCount.pending > 0">{{ orderCount.pending }}</view>
           </view>
+          <view class="status-item" @click="goToOrders(2)">
+            <view class="status-icon">💰</view>
+            <text class="status-text">已付款</text>
+            <view class="status-badge" v-if="orderCount.paid > 0">{{ orderCount.paid }}</view>
+          </view>
           <view class="status-item" @click="goToOrders(3)">
             <view class="status-icon">✅</view>
-            <text class="status-text">已确认</text>
+            <text class="status-text">定金已付</text>
             <view class="status-badge" v-if="orderCount.confirmed > 0">{{ orderCount.confirmed }}</view>
           </view>
           <view class="status-item" @click="goToOrders(4)">
@@ -168,6 +173,7 @@ export default {
     return {
       orderCount: {
         pending: 0,
+        paid: 0,
         confirmed: 0
       },
       monthlyOrders: [],

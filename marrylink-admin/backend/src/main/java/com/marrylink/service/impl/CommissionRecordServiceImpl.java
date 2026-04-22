@@ -71,8 +71,9 @@ public class CommissionRecordServiceImpl extends ServiceImpl<CommissionRecordMap
                 .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
 
         // 检查最低抽成金额
-        if (commissionAmount.compareTo(config.getMinAmount()) < 0) {
-            commissionAmount = config.getMinAmount();
+        BigDecimal minAmount = config.getMinAmount() != null ? config.getMinAmount() : BigDecimal.ZERO;
+        if (commissionAmount.compareTo(minAmount) < 0) {
+            commissionAmount = minAmount;
         }
 
         // 创建抽成记录（待结算，主持人支付佣金后自动变为已结算）
