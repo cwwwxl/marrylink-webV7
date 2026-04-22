@@ -64,6 +64,14 @@ export const marrylinkRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'commission',
+        name: 'CommissionManage',
+        component: () => import('@/views/marrylink/commission/index.vue'),
+        meta: {
+          title: '抽成管理',
+        }
+      },
+      {
         path: 'schedule',
         name: 'ScheduleManage',
         component: () => import('@/views/marrylink/schedule/index.vue'),

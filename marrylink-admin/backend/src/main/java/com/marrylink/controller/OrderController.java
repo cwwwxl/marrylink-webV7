@@ -13,6 +13,7 @@ import com.marrylink.service.IHostService;
 import com.marrylink.service.IMessageService;
 import com.marrylink.service.IOrderLogService;
 import com.marrylink.service.IOrderService;
+import com.marrylink.service.ICommissionRecordService;
 import com.marrylink.service.IQuestionnaireSubmissionService;
 import com.marrylink.service.IUserService;
 import com.marrylink.utils.SecurityUtils;
@@ -43,6 +44,8 @@ public class OrderController {
     private IQuestionnaireSubmissionService qsService;
     @Resource
     private IMessageService messageService;
+    @Autowired
+    private ICommissionRecordService commissionRecordService;
 
     @GetMapping("/page")
     public Result<PageResult<Order>> page(
@@ -137,6 +140,10 @@ public class OrderController {
 
         if (3 == order.getStatus()) {
             qsService.createQS(order);
+        } else if (4 == order.getStatus()) {
+            // 订单完成时自动生成平台抽成记录
+            Order fullOrder = orderService.getById(order.getId());
+            commissionRecordService.generateCommission(fullOrder);
         } else if (5 == order.getStatus()){
             qsService.deleteQSByNo(order);
         }
@@ -175,6 +182,9 @@ public class OrderController {
 
         if (3 == status) {
             qsService.createQS(orderForQs);
+        } else if (4 == status) {
+            // 订单完成时自动生成平台抽成记录
+            commissionRecordService.generateCommission(orderForQs);
         } else if (5 == status) {
             qsService.deleteQSByNo(orderForQs);
         }
