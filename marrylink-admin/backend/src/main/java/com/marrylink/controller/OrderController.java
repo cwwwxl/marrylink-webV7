@@ -134,15 +134,21 @@ public class OrderController {
     @Transactional(rollbackFor = Exception.class)
     public Result<Void> update(@RequestBody Order order, HttpServletRequest request) {
         Order oldOrder = orderService.getById(order.getId());
+        if (oldOrder == null) {
+            return Result.error("订单不存在");
+        }
         orderService.updateById(order);
+
+        // 使用oldOrder的orderNo作为兜底，防止请求体中未传orderNo导致NPE
+        String orderNo = order.getOrderNo() != null ? order.getOrderNo() : oldOrder.getOrderNo();
 
         String operator = SecurityUtils.getCurrentUsername();
         String ip = getClientIp(request);
-        orderLogService.logOrderStatusChange(order.getOrderNo(), oldOrder.getStatus(), order.getStatus(), operator, ip);
+        orderLogService.logOrderStatusChange(orderNo, oldOrder.getStatus(), order.getStatus(), operator, ip);
 
         if (2 == order.getStatus()) {
             // 用户付款，资金存管在平台
-            log.info("订单 {} 用户已付款，资金进入平台存管", order.getOrderNo() != null ? order.getOrderNo() : oldOrder.getOrderNo());
+            log.info("订单 {} 用户已付款，资金进入平台存管", orderNo);
         } else if (3 == order.getStatus()) {
             qsService.createQS(order);
         } else if (4 == order.getStatus()) {

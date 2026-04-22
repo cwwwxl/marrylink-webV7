@@ -593,10 +593,11 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       const statusMap = {
-        'confirmed': '已确认',
-        'communicating': '沟通中',
-        'pending': '待确认',
-        'completed': '已完成'
+        1: '待确认',
+        2: '已付款(存管)',
+        3: '定金已付',
+        4: '已完成',
+        5: '已取消'
       }
       return statusMap[status] || '未知'
     },

@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS `order` (
     `wedding_date` DATE NOT NULL,
     `wedding_type` VARCHAR(50),
     `amount` DECIMAL(10,2),
-    `status` TINYINT DEFAULT 1 COMMENT '1:待确认 2:已确认 3:定金已付 4:已完成 5:已取消',
+    `status` TINYINT DEFAULT 1 COMMENT '1:待确认 2:已付款(平台存管) 3:定金已付 4:已完成 5:已取消',
     `rating` TINYINT DEFAULT NULL COMMENT '用户评分 1-5星',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

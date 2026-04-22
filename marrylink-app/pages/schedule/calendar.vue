@@ -221,6 +221,7 @@ export default {
       if (status === 'occupied') return '已占用'
       if (status === 'escrow') return '已付款(存管)'
       if (status === 'pending') return '待确认'
+      return ''
     },
     getDayClass(day) {
       if (!day.day) return 'empty'
